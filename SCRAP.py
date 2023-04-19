@@ -84,39 +84,45 @@ def multiqc():
 
     print('Done running MultiQC -- ', datetime.now())
 
+def sampleWorker(df, directory, sample):
+    countReads(directory, sample)
+    # if (paired_end == 'yes'):
+    #         flash()
+    # if five_prime_adapter:
+    #     print('five prime adapter')
+    # if three_prime_adapter:
+    #     print('three prime adapter')
+    # if five_prime_barcode:
+    #     print('five prime barcode')
+    # if three_prime_barcode:
+    #     print('three prime barcode')
 
-def readAdapterFile(df):
+
+
+def readAdapterFile(df, sample):
     print('Extract adapter and barcode sequences from adapter file')
 
-    for sample in samples:
-        five_prime_adapter = df["5'Adapter"][sample]
-        three_prime_adapter = df["3'Adapter"][sample]
-        five_prime_barcode = df["5'Barcode"][sample]
-        three_prime_barcode = df["3'Barcode"][sample]
+    five_prime_adapter = df["5'Adapter"][sample]
+    three_prime_adapter = df["3'Adapter"][sample]
+    five_prime_barcode = df["5'Barcode"][sample]
+    three_prime_barcode = df["3'Barcode"][sample]
 
-        sample_summary_txt = os.path.join(directory, sample, sample + '.summary.txt')
-        if os.path.exists(sample_summary_txt):
-            os.remove(sample_summary_txt)
+    sample_summary_txt = os.path.join(directory, sample, sample + '.summary.txt')
+    if os.path.exists(sample_summary_txt):
+        os.remove(sample_summary_txt)
 
-        with open(sample_summary_txt, 'a') as file:
-            line1 = f"{sample}\n"
-            line2 = f"5'-{five_prime_adapter}{five_prime_barcode}...sncRNA-targetRNA...{three_prime_adapter}{three_prime_barcode}\n"
-            line3 = f"miRBase Species Abbreviation: {miRBase_species_abbreviation}\n"
-            line4 = f"Genome Species Abbreviation: {genome_species_abbreviation}\n"
-            line5 = f"Start: {datetime.now()}\n"
+    with open(sample_summary_txt, 'a') as file:
+        line1 = f"{sample}\n"
+        line2 = f"5'-{five_prime_adapter}{five_prime_barcode}...sncRNA-targetRNA...{three_prime_adapter}{three_prime_barcode}\n"
+        line3 = f"miRBase Species Abbreviation: {miRBase_species_abbreviation}\n"
+        line4 = f"Genome Species Abbreviation: {genome_species_abbreviation}\n"
+        line5 = f"Start: {datetime.now()}\n"
 
-            #write to the file
-            file.writelines([line1, line2, line3, line4, line5])
-
-    # Separate samples into max 4 subprocess workers for counting reads.
-
-    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-        futures = [executor.submit(
-            countReadsWorker, directory, sample) for sample in samples]
-        concurrent.futures.wait(futures)
+        #write to the file
+        file.writelines([line1, line2, line3, line4, line5])
 
 
-def countReadsWorker(directory, sample):
+def countReads(directory, sample):
     files = glob.glob(os.path.join(directory, sample) + '/*fastq*')
 
     # Separate R1 and R2 into 2 subproccess workers for counting reads.
@@ -201,9 +207,16 @@ if __name__ == '__main__':
 
     # fastqc()
     # multiqc()
-    # readAdapterFile(df)
 
-    if (paired_end == 'yes'):
-        flash()
+    for sample in samples:
+        readAdapterFile(df, sample)
+
+
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(
+            sampleWorker, df, directory, sample) for sample in samples]
+        concurrent.futures.wait(futures)
+    
 
     
