@@ -65,7 +65,6 @@ def fastqc():
     print('Done running FastQC -- ', datetime.now())
 
 
-
 def fastqc_worker(directory, sample):
     print('Running FastQC - Sample: ', sample, ' -- ', datetime.now())
     files = ' '.join(glob.glob(os.path.join(directory, sample) + '/*fastq*'))
@@ -84,10 +83,11 @@ def multiqc():
 
     print('Done running MultiQC -- ', datetime.now())
 
+
 def sampleWorker(df, directory, sample):
     countReads(directory, sample)
-    # if (paired_end == 'yes'):
-    #         flash()
+    if (paired_end == 'yes'):
+        flash(directory, sample)
     # if five_prime_adapter:
     #     print('five prime adapter')
     # if three_prime_adapter:
@@ -98,7 +98,6 @@ def sampleWorker(df, directory, sample):
     #     print('three prime barcode')
 
 
-
 def readAdapterFile(df, sample):
     print('Extract adapter and barcode sequences from adapter file')
 
@@ -107,7 +106,8 @@ def readAdapterFile(df, sample):
     five_prime_barcode = df["5'Barcode"][sample]
     three_prime_barcode = df["3'Barcode"][sample]
 
-    sample_summary_txt = os.path.join(directory, sample, sample + '.summary.txt')
+    sample_summary_txt = os.path.join(
+        directory, sample, sample + '.summary.txt')
     if os.path.exists(sample_summary_txt):
         os.remove(sample_summary_txt)
 
@@ -118,7 +118,7 @@ def readAdapterFile(df, sample):
         line4 = f"Genome Species Abbreviation: {genome_species_abbreviation}\n"
         line5 = f"Start: {datetime.now()}\n"
 
-        #write to the file
+        # write to the file
         file.writelines([line1, line2, line3, line4, line5])
 
 
@@ -131,22 +131,33 @@ def countReads(directory, sample):
         futures = [executor.submit(
             countReadsSubWorker, zipfile, directory, sample) for zipfile in files]
         concurrent.futures.wait(futures)
-        
+
 
 def countReadsSubWorker(zipfile, directory, sample):
     print('Counting reads for ', zipfile, ' -- ', datetime.now())
     with gzip.open(zipfile, 'rt') as f_in:
         num_reads = sum(1 for line in f_in) // 4
 
-    sample_summary_txt = os.path.join(directory, sample, sample + '.summary.txt')
+    sample_summary_txt = os.path.join(
+        directory, sample, sample + '.summary.txt')
 
     with open(sample_summary_txt, 'a') as file:
         file.write(f"{zipfile} raw reads: {num_reads}\n")
     print('Done counting reads for ', zipfile, ' -- ', datetime.now())
 
 
-def flash():
+def flash(directory, sample):
     print('Running FLASH -- ', datetime.now())
+    flash_path = os.path.join(directory, sample, '/'+sample+'_FLASH')
+    try:
+        os.mkdir(flash_path)
+    except:
+        print('Flash folder already exists')
+    r1 = os.path.join(directory, sample, sample+'_R1.fastq.gz')
+    r2 = os.path.join(directory, sample, sample+'_R2.fastq.gz')
+    flash_log = os.path.join(flash_path, '/FLASH_'+sample+'.log')
+    subprocess.run(['flash', '--allow-outies', '--output-directory='+flash_path+'/',
+                   '--output-prefix='+sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, '2>&1 | tee', flash_log])
 
 
 ########## Pipeline begins here #############
@@ -211,12 +222,7 @@ if __name__ == '__main__':
     for sample in samples:
         readAdapterFile(df, sample)
 
-
-
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         futures = [executor.submit(
             sampleWorker, df, directory, sample) for sample in samples]
         concurrent.futures.wait(futures)
-    
-
-    
