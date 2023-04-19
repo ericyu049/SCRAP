@@ -1,3 +1,4 @@
+import argparse
 import sys
 import getopt
 import subprocess
@@ -44,10 +45,10 @@ samples_with_path = []
 fastqc_report_folder = ''
 multiqc_report_folder = ''
 
-five_prime_adapter = ''
-three_prime_adapter = ''
-five_prime_barcode = ''
-three_prime_barcode = ''
+five_prime_adapter = None
+three_prime_adapter = None
+five_prime_barcode = None
+three_prime_barcode = None
 
 
 def fastqc():
@@ -176,52 +177,30 @@ def flash(directory, sample):
 
 ########## Pipeline begins here #############
 if __name__ == '__main__':
-    argv = sys.argv[1:]
-    opts, args = getopt.getopt(argv, "hd:a:p:f:r:m:g:")
-    for opt, arg in opts:
-        match opt:
-            case '-h':
-                print('help')
-                sys.exit()
-            case '-d':
-                directory = arg
-            case '-a':
-                adapter_file = arg
-            case '-p':
-                paired_end = arg
-            case '-f':
-                pre_filtered = arg
-            case '-r':
-                reference_directory = arg
-            case '-m':
-                miRBase_species_abbreviation = arg
-            case '-g':
-                genome_species_abbreviation = arg
-            case default:
-                print('invalid command')
-                sys.exit()
+    parser = argparse.ArgumentParser(description='Description of your program')
 
-    if directory == '':
-        print("Error: Path to sample directories not provided [-d]")
-        sys.exit(1)
-    if adapter_file == '':
-        print("Error: Path to adapter file not provided [-a]")
-        sys.exit(1)
-    if paired_end == '':
-        print("Error: Are samples paired-end? [-p]")
-        sys.exit(1)
-    if pre_filtered == '':
-        print("Error: Filter out pre-miRNAs and tRNAs? [-f]")
-        sys.exit(1)
-    if reference_directory == '':
-        print("Error: Path to reference directory not provided [-r]")
-        sys.exit(1)
-    if miRBase_species_abbreviation == '':
-        print("Error: miRBase species abbreviation not provided [-m]")
-        sys.exit(1)
-    if genome_species_abbreviation == '':
-        print("Error: Species genome abbreviation not provided [-g]")
-        sys.exit(1)
+    parser.add_argument('-d', '--directory', type=str, required=True, help='Description of directory argument')
+    parser.add_argument('-a', '--adapter_file', type=str, required=True, help='Description of adapter_file argument')
+    parser.add_argument('-p', '--paired_end', type=str, required=True, help='Description of paired_end argument')
+    parser.add_argument('-f', '--pre_filtered', type=str, required=True, help='Description of pre_filtered argument')
+    parser.add_argument('-r', '--reference_directory', type=str, required=True, help='Description of reference_directory argument')
+    parser.add_argument('-m', '--miRBase_species_abbreviation', type=str, required=True, help='Description of miRBase_species_abbreviation argument')
+    parser.add_argument('-g', '--genome_species_abbreviation', type=str, required=True, help='Description of genome_species_abbreviation argument')
+
+    args = parser.parse_args()
+
+    if args.help:
+        parser.print_help()
+        sys.exit()
+
+    directory = args.directory
+    adapter_file = args.adapter_file
+    paired_end = args.paired_end
+    pre_filtered = args.pre_filtered
+    reference_directory = args.reference_directory
+    miRBase_species_abbreviation = args.miRBase_species_abbreviation
+    genome_species_abbreviation = args.genome_species_abbreviation
+
 
     df = pd.read_csv(adapter_file, sep='\t', skiprows=[0], index_col=0, names=[
         "5'Adapter", "3'Adapter", "5'Barcode", "3'Barcode"])
@@ -233,13 +212,11 @@ if __name__ == '__main__':
     # fastqc()
     # multiqc()
 
-
     for sample in samples:
         readAdapterFile(df, sample)
 
-
     flags = [paired_end, pre_filtered, five_prime_adapter, three_prime_adapter, five_prime_barcode, three_prime_barcode ]
-
+    
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         futures = [executor.submit(
             sampleWorker, directory, sample, flags) for sample in samples]
