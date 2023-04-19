@@ -1,12 +1,12 @@
 import argparse
 import sys
-import getopt
 import subprocess
 import os
 import glob
 import concurrent.futures
 import pandas as pd
 import gzip
+import shutil
 from datetime import datetime
 
 
@@ -81,18 +81,15 @@ def multiqc():
 
 
 def sampleWorker(directory, sample, flags):
-    # countReads(directory, sample)
+    countReads(directory, sample)
     if (flags[0] == 'yes'):
         flash(directory, sample)
-    # if five_prime_adapter:
-    #     print('five prime adapter')
-    # if three_prime_adapter:
-    #     print('three prime adapter')
-    # if five_prime_barcode:
-    #     print('five prime barcode')
-    # if three_prime_barcode:
-    #     print('three prime barcode')
-    
+    if flags[2]: # five prime adapter
+        cutadaptAdapter(directory, sample, flags[2], 5)
+    if flags[3]: # three prime adapter
+        cutadaptAdapter(directory, sample, flags[3], 3)
+
+    # Duplicate reads:
 
 
 def readAdapterFile(df, sample):
@@ -157,7 +154,8 @@ def flash(directory, sample):
 
     subprocess.run(['flash', '--allow-outies', '--output-directory='+flash_path+'/',
                    '--output-prefix='+sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, '2>&1 | tee', flash_log])
-    os.rename(os.path.join(flash_path, sample+'.extendedFrags.fasq.gz'), os.path.join(directory, sample, sample+'.fastq.gz'))
+    os.rename(os.path.join(flash_path, sample+'.extendedFrags.fasq.gz'),
+              os.path.join(directory, sample, sample+'.fastq.gz'))
 
     if os.path.exists(flash_path):
         os.remove(flash_path)
@@ -175,17 +173,43 @@ def flash(directory, sample):
     with open(sample_summary_txt, 'a') as file:
         file.write(f"{sample} combined paired-end reads: {num_reads}\n")
 
+    src = os.path.join(directory, sample, sample+'.fastq.gz')
+    dest = os.path.join(directory, sample, sample+'.tmp.fastq.gz')
+    shutil.copy(src, dest)
+
+
+def cutadaptAdapter(directory, sample, genome, type):
+    output = os.path.join(directory, sample, sample+'.cutadapt.fastq.gz')
+    json = os.path.join(directory, sample, sample +
+                        '.cutadapt.'+type+'adapter.json')
+    tmp = os.path.join(directory, sample, sample+'.tmp.fastq.gz')
+    subprocess.run(['cutadapt', '-g', genome, '-q',
+                   '30', '-m', '30', '-n', '2', '-o', output, '--json='+json, tmp])
+
+    src = os.path.join(directory, sample, sample + '.cutadapt.fastq.gz')
+    dest = os.path.join(directory, sample, sample + '.tmp.fastq.gz')
+    shutil.move(src, dest)
+
+
 ########## Pipeline begins here #############
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Description of your program')
 
-    parser.add_argument('-d', '--directory', type=str, required=True, help='Description of directory argument')
-    parser.add_argument('-a', '--adapter_file', type=str, required=True, help='Description of adapter_file argument')
-    parser.add_argument('-p', '--paired_end', type=str, required=True, help='Description of paired_end argument')
-    parser.add_argument('-f', '--pre_filtered', type=str, required=True, help='Description of pre_filtered argument')
-    parser.add_argument('-r', '--reference_directory', type=str, required=True, help='Description of reference_directory argument')
-    parser.add_argument('-m', '--miRBase_species_abbreviation', type=str, required=True, help='Description of miRBase_species_abbreviation argument')
-    parser.add_argument('-g', '--genome_species_abbreviation', type=str, required=True, help='Description of genome_species_abbreviation argument')
+    parser.add_argument('-d', '--directory', type=str,
+                        required=True, help='Description of directory argument')
+    parser.add_argument('-a', '--adapter_file', type=str,
+                        required=True, help='Description of adapter_file argument')
+    parser.add_argument('-p', '--paired_end', type=str,
+                        required=True, help='Description of paired_end argument')
+    parser.add_argument('-f', '--pre_filtered', type=str,
+                        required=True, help='Description of pre_filtered argument')
+    parser.add_argument('-r', '--reference_directory', type=str,
+                        required=True, help='Description of reference_directory argument')
+    parser.add_argument('-m', '--miRBase_species_abbreviation', type=str,
+                        required=True, help='Description of miRBase_species_abbreviation argument')
+    parser.add_argument('-g', '--genome_species_abbreviation', type=str,
+                        required=True, help='Description of genome_species_abbreviation argument')
 
     args = parser.parse_args()
 
@@ -201,7 +225,6 @@ if __name__ == '__main__':
     miRBase_species_abbreviation = args.miRBase_species_abbreviation
     genome_species_abbreviation = args.genome_species_abbreviation
 
-
     df = pd.read_csv(adapter_file, sep='\t', skiprows=[0], index_col=0, names=[
         "5'Adapter", "3'Adapter", "5'Barcode", "3'Barcode"])
     samples = df.index.unique()
@@ -215,8 +238,9 @@ if __name__ == '__main__':
     for sample in samples:
         readAdapterFile(df, sample)
 
-    flags = [paired_end, pre_filtered, five_prime_adapter, three_prime_adapter, five_prime_barcode, three_prime_barcode ]
-    
+    flags = [paired_end, pre_filtered, five_prime_adapter,
+             three_prime_adapter, five_prime_barcode, three_prime_barcode]
+
     with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
         futures = [executor.submit(
             sampleWorker, directory, sample, flags) for sample in samples]
