@@ -84,9 +84,9 @@ def sampleWorker(directory, sample, flags):
     countReads(directory, sample)
     if (flags[0] == 'yes'):
         flash(directory, sample)
-    if flags[2]: # five prime adapter
+    if flags[2]:  # five prime adapter
         cutadaptAdapter(directory, sample, flags[2], 5)
-    if flags[3]: # three prime adapter
+    if flags[3]:  # three prime adapter
         cutadaptAdapter(directory, sample, flags[3], 3)
 
     # Duplicate reads:
@@ -134,7 +134,7 @@ def countReadsSubWorker(zipfile, directory, sample):
         num_reads = sum(1 for line in f_in) // 4
 
     sample_summary_txt = os.path.join(
-        directory, sample, sample + '.summary.txt')
+        directory, sample, f"{sample}.summary.txt")
 
     with open(sample_summary_txt, 'a') as file:
         file.write(f"{zipfile} raw reads: {num_reads}\n")
@@ -144,50 +144,53 @@ def countReadsSubWorker(zipfile, directory, sample):
 def flash(directory, sample):
     print('Running FLASH -- ', datetime.now())
 
-    flash_path = os.path.join(directory, sample, sample+'_FLASH')
+    flash_path = os.path.join(directory, sample, f"{sample}_FLASH")
     if not os.path.exists(flash_path):
         os.mkdir(flash_path)
 
-    r1 = os.path.join(directory, sample, sample+'_R1.fastq.gz')
-    r2 = os.path.join(directory, sample, sample+'_R2.fastq.gz')
-    flash_log = os.path.join(flash_path, 'FLASH_' + sample+'.log')
+    r1 = os.path.join(directory, sample, f"{sample}_R1.fastq.gz")
+    r2 = os.path.join(directory, sample, f"{sample}_R2.fastq.gz")
+    flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
 
     subprocess.run(['flash', '--allow-outies', '--output-directory='+flash_path+'/',
                    '--output-prefix='+sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, '2>&1 | tee', flash_log])
-    os.rename(os.path.join(flash_path, sample+'.extendedFrags.fasq.gz'),
-              os.path.join(directory, sample, sample+'.fastq.gz'))
+    os.rename(os.path.join(flash_path, f"{sample}.extendedFrags.fasq.gz"),
+              os.path.join(directory, sample, f"{sample}.fastq.gz"))
 
-    if os.path.exists(flash_path):
-        os.remove(flash_path)
+    shutil.rmtree(flash_path) if os.path.exist(flash_path) else None
 
-    print('Counting number of reads from FLASH output')
+    print('FLASH process completed. Removed FLASH output folder. -- ', datetime.now())
 
-    zipfile = os.path.join(directory, sample, sample+'.fastq.gz')
+    print('Counting number of reads from FLASH output -- ', datetime.now())
+
+    zipfile = os.path.join(directory, sample, f'{sample}.fastq.gz')
 
     with gzip.open(zipfile, 'rt') as f_in:
         num_reads = sum(1 for line in f_in) // 4
 
     sample_summary_txt = os.path.join(
-        directory, sample, sample + '.summary.txt')
+        directory, sample, f'{sample}.summary.txt')
 
     with open(sample_summary_txt, 'a') as file:
         file.write(f"{sample} combined paired-end reads: {num_reads}\n")
 
-    src = os.path.join(directory, sample, sample+'.fastq.gz')
-    dest = os.path.join(directory, sample, sample+'.tmp.fastq.gz')
+    print('Done counting and written number of reads to summary.txt -- ', datetime.now())
+
+    src = os.path.join(directory, sample, f"{sample}.fastq.gz")
+    dest = os.path.join(directory, sample, f"{sample}.tmp.fastq.gz")
     shutil.copy(src, dest)
 
 
 def cutadaptAdapter(directory, sample, genome, type):
-    output = os.path.join(directory, sample, sample+'.cutadapt.fastq.gz')
-    json = os.path.join(directory, sample, sample +
-                        '.cutadapt.'+type+'adapter.json')
-    tmp = os.path.join(directory, sample, sample+'.tmp.fastq.gz')
+    output = os.path.join(directory, sample, f"{sample}.cutadapt.fastq.gz")
+    json = os.path.join(directory, sample,
+                        f"{sample}.cutadapt.{type}adapter.json")
+    tmp = os.path.join(directory, sample, f"{sample}.tmp.fastq.gz")
     subprocess.run(['cutadapt', '-g', genome, '-q',
                    '30', '-m', '30', '-n', '2', '-o', output, '--json='+json, tmp])
 
-    src = os.path.join(directory, sample, sample + '.cutadapt.fastq.gz')
-    dest = os.path.join(directory, sample, sample + '.tmp.fastq.gz')
+    src = os.path.join(directory, sample, f"{sample}.cutadapt.fastq.gz")
+    dest = os.path.join(directory, sample, f"{sample}.tmp.fastq.gz")
     shutil.move(src, dest)
 
 
