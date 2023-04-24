@@ -153,7 +153,7 @@ def flash(directory, sample):
 
     flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
 
-    command = ['flash', '--allow-outies', '--output-directory=' + flash_path, '--output-prefix=' + sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, flash_log]
+    command = ['flash', '--allow-outies', '--output-directory=' + flash_path, '--output-prefix=' + sample, '--max-overlap=150', '--min-overlap=6', '--compress', '--', r1, r2, flash_log]
     with open(flash_log, 'w') as log_file:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in iter(process.stdout.readline, b''):
