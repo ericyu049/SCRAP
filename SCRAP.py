@@ -81,7 +81,7 @@ def multiqc():
 
 
 def sampleWorker(directory, sample, flags):
-    countReads(directory, sample)
+    #countReads(directory, sample)
     if (flags[0] == 'yes'):
         flash(directory, sample)
     if flags[2]:  # five prime adapter
@@ -150,7 +150,7 @@ def flash(directory, sample):
 
     r1 = os.path.join(directory, sample, f"{sample}_R1.fastq.gz")
     r2 = os.path.join(directory, sample, f"{sample}_R2.fastq.gz")
-    
+
     flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
     output_directory = '--output-directory=' + flash_path
     output_prefix = '--output-prefix=' + sample
@@ -238,11 +238,11 @@ if __name__ == '__main__':
     fastqc_report_folder = os.path.join(directory + 'FastQC_Reports')
     multiqc_report_folder = os.path.join(directory + 'MultiQC_Report')
 
-    fastqc()
-    multiqc()
+    # fastqc()
+    # multiqc()
 
-    for sample in samples:
-        readAdapterFile(df, sample)
+    # for sample in samples:
+    #     readAdapterFile(df, sample)
 
     flags = [paired_end, pre_filtered, five_prime_adapter,
              three_prime_adapter, five_prime_barcode, three_prime_barcode]
