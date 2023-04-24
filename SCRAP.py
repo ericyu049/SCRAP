@@ -152,9 +152,8 @@ def flash(directory, sample):
     r2 = os.path.join(directory, sample, f"{sample}_R2.fastq.gz")
 
     flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
-    command = ['flash', '-O', '-d', flash_path, '-o', sample, '-M', '150', '-m', '6', '-z', r1, r2]
-
     with open(flash_log, 'w') as f:
+        command = ['flash', '-O', '-d', flash_path, '-o', sample, '-M', '150', '-m', '6', '-z', r1, r2]
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in iter(process.stdout.readline, b''):
             line = line.decode('utf-8').rstrip('\n')
