@@ -152,7 +152,7 @@ def flash(directory, sample):
     r2 = os.path.join(directory, sample, f"{sample}_R2.fastq.gz")
 
     flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
-    command = ['flash', '--allow-outies', '--output-directory=' + flash_path, '--output-prefix=' + sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, '2>&1 | tee', flash_log]
+    command = ['flash', '--allow-outies', '-d', flash_path, '-o', sample, '--max-overlap=150', '--min-overlap=6', '-z', r1, r2, '2>&1 | tee', flash_log]
     print(" ".join(command))
     subprocess.run(command)
                    
