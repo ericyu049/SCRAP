@@ -155,7 +155,7 @@ def flash(directory, sample):
     output_directory = '--output-directory=' + flash_path
     output_prefix = '--output-prefix=' + sample
 
-    subprocess.run(['flash', '--allow-outies', output_directory, output_prefix, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, '2>&1 | tee', flash_log])
+    subprocess.run(['flash', '--allow-outies', '--output-directory=', flash_path, '--output-prefix', sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, '2>&1 | tee', flash_log])
                    
     os.rename(os.path.join(flash_path, f"{sample}.extendedFrags.fasq.gz"),
               os.path.join(directory, sample, f"{sample}.fastq.gz"))
