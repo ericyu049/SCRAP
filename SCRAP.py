@@ -65,8 +65,8 @@ def fastqc():
 
 def fastqc_worker(directory, sample):
     print('Running FastQC - Sample: ', sample, ' -- ', datetime.now())
-    files = ' '.join(glob.glob(os.path.join(directory, sample, '*fastq*')))
-    subprocess.run(['fastqc', '-o', fastqc_report_folder, files, '-t', '2'])
+    files = glob.glob(os.path.join(directory, sample, '*fastq*'))
+    subprocess.run(['fastqc', *files, '-o', fastqc_report_folder, '-t', '2'])
     print('Done running FastQC - Sample: ', sample, ' -- ', datetime.now())
 
 
@@ -237,8 +237,8 @@ if __name__ == '__main__':
     fastqc_report_folder = os.path.join(directory + 'FastQC_Reports')
     multiqc_report_folder = os.path.join(directory + 'MultiQC_Report')
 
-    # fastqc()
-    # multiqc()
+    fastqc()
+    multiqc()
 
     for sample in samples:
         readAdapterFile(df, sample)
