@@ -88,9 +88,26 @@ def sampleWorker(directory, sample, flags):
         cutadaptAdapter(directory, sample, flags[2], 5)
     if flags[3]:  # three prime adapter
         cutadaptAdapter(directory, sample, flags[3], 3)
-
+        
     # Duplicate reads:
 
+    # get file sample.cutadapt.fastq.gz
+    zipfile = os.path.join(directory, sample, sample + '.cutadapt.fastq.gz')
+    message = sample + 'reads following unbarcoded adapter removal: '
+    countReadsSubWorker(zipfile, directory, sample, message)
+
+    # remove duplicate reads
+    deduped = os.path.join(directory, sample, sample + '.cutadapt.deduped.fastq')
+    removeDuplicateReads(zipfile, deduped)
+
+    countReadsSubWorker(deduped, directory, sample, f"{sample} deduplicated reads: ")
+
+
+    if flags[4]:
+        print('five prime barcode')
+    if flags[5]:
+        print('three prime barcode')
+    
 
 def readAdapterFile(df, sample):
     print('Extract adapter and barcode sequences from adapter file')
@@ -124,11 +141,11 @@ def countReads(directory, sample):
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
         futures = [executor.submit(
-            countReadsSubWorker, zipfile, directory, sample) for zipfile in files]
+            countReadsSubWorker, zipfile, directory, sample, f"{zipfile} raw reads: ") for zipfile in files]
         concurrent.futures.wait(futures)
 
 
-def countReadsSubWorker(zipfile, directory, sample):
+def countReadsSubWorker(zipfile, directory, sample, message):
     print('Counting reads for ', zipfile, ' -- ', datetime.now())
     with gzip.open(zipfile, 'rt') as f_in:
         num_reads = sum(1 for line in f_in) // 4
@@ -137,7 +154,7 @@ def countReadsSubWorker(zipfile, directory, sample):
         directory, sample, f"{sample}.summary.txt")
 
     with open(sample_summary_txt, 'a') as file:
-        file.write(f"{zipfile} raw reads: {num_reads}\n")
+        file.write(f"{message} {num_reads}\n")
     print('Done counting reads for ', zipfile, ' -- ', datetime.now())
 
 
@@ -200,6 +217,24 @@ def cutadaptAdapter(directory, sample, genome, type):
     dest = os.path.join(directory, sample, f"{sample}.tmp.fastq.gz")
     shutil.move(src, dest)
 
+def removeDuplicateReads(input_file, output_file):
+    seq_counts = {}
+    with gzip.open(input_file, "rt") as fin:
+        for i, line in enumerate(fin):
+            if i % 4 == 1:
+                # Extract the sequence from the second line of each read
+                seq = line.strip()
+
+                # Add the sequence to the dictionary and increment its count
+                seq_counts[seq] = seq_counts.get(seq, 0) + 1
+
+            # Sort the dictionary by sequence count in descending order
+            sorted_seqs = sorted(seq_counts.items(), key=lambda x: x[1], reverse=True)
+
+            # Write the sorted sequences to the output file in fasta format
+            with open(output_file, "w") as fout:
+                for i, (seq, count) in enumerate(sorted_seqs):
+                    fout.write(">{}-{}\n{}\n".format(i+1, count, seq)) 
 
 ########## Pipeline begins here #############
 
