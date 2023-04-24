@@ -150,16 +150,16 @@ def flash(directory, sample):
 
     r1 = os.path.join(directory, sample, f"{sample}_R1.fastq.gz")
     r2 = os.path.join(directory, sample, f"{sample}_R2.fastq.gz")
+    command = ['flash', '-O', '-d', flash_path, '-o', sample, '-M', '150', '-m', '6', '-z', r1, r2]
 
     flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
-    with open(flash_log, 'w') as f:
-        command = ['flash', '-O', '-d', flash_path, '-o', sample, '-M', '150', '-m', '6', '-z', r1, r2]
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    
+    with open(flash_log, 'w') as log_file:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         for line in iter(process.stdout.readline, b''):
-            line = line.decode('utf-8').rstrip('\n')
-            f.write(line + '\n')
-            print(line)
-    process.wait()
+            print(line.decode().strip())
+            log_file.write(line.decode())
+        process.communicate()
                    
     os.rename(os.path.join(flash_path, f"{sample}.extendedFrags.fasq.gz"),
               os.path.join(directory, sample, f"{sample}.fastq.gz"))
