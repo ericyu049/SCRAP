@@ -152,10 +152,14 @@ def flash(directory, sample):
     r2 = os.path.join(directory, sample, f"{sample}_R2.fastq.gz")
 
     flash_log = os.path.join(flash_path, f"FLASH_{sample}.log")
-    
+
     command = ['flash', '--allow-outies', '--output-directory=' + flash_path, '--output-prefix=' + sample, '--max-overlap=150', '--min-overlap=6', '--compress', r1, r2, flash_log]
     with open(flash_log, 'w') as log_file:
-        subprocess.run(command, check=True, stdout=log_file, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        for line in iter(process.stdout.readline, b''):
+            print(line.decode().strip())
+            log_file.write(line.decode())
+        process.communicate()
                    
     os.rename(os.path.join(flash_path, f"{sample}.extendedFrags.fasq.gz"),
               os.path.join(directory, sample, f"{sample}.fastq.gz"))
