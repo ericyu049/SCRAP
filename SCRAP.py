@@ -102,11 +102,24 @@ def sampleWorker(directory, sample, flags):
 
     countReadsSubWorker(deduped, directory, sample, f"{sample} deduplicated reads: ")
 
+    if flags[4]: # five prime barcode
+        cutadaptBarcode(directory, sample, flags[4], 5)
 
-    if flags[4]:
-        print('five prime barcode')
-    if flags[5]:
-        print('three prime barcode')
+    if flags[5]: # three prime barcode
+        cutadaptBarcode(directory, sample, flags[5], 3)
+
+    src = os.path.join(directory, sample, f"{sample}.cutadapt.deduped.fasta")
+    dest = os.path.join(directory, sample, f"{sample}.cutadapt.deduped.barcoded.fasta")
+
+    # count reads following the barcoded adapter removal
+
+
+    # align reads to pre-miRNA reference file
+
+    # filter pre-miRNA alignments
+
+    # remove reads that aligned to pre-miRNAs with minimum filters
+
     
 
 def readAdapterFile(df, sample):
@@ -216,6 +229,18 @@ def cutadaptAdapter(directory, sample, genome, type):
     src = os.path.join(directory, sample, f"{sample}.cutadapt.fastq.gz")
     dest = os.path.join(directory, sample, f"{sample}.tmp.fastq.gz")
     shutil.move(src, dest)
+
+def cutadaptBarcode(directory, sample, genome, type):
+    output = os.path.join(directory, sample, f"{sample}.cutadapt.deduped.barcoded.fasta")
+    json = os.path.join(directory, sample, f"{sample}.cutadapt.{type}barcode.json")
+
+    tmp = os.path.join(directory, sample, f"{sample}.cutadapt.deduped.fasta")
+    subprocess.run(['cutadapt', '-g', genome, '-m', '30', '-o', output, '--json='+json, tmp])
+
+    src = os.path.join(directory, sample, f"{sample}cutadapt.deduped.barcoded.fasta")
+    dest = os.path.join(directory, sample, f"{sample}.cutadapt.deduped.fasta")
+    shutil.move(src, dest)
+
 
 def removeDuplicateReads(input_file, output_file):
     seq_counts = {}
